@@ -100,6 +100,20 @@ def process_output(args, output):
 
 def get_dataset_splits(args):
     train_dataset, val_dataset, test_dataset = [], [], []
+    if args.dataset_name == "medqa":
+        # medqa doc bang open(data_path) local (khong co fallback HF) -> bao loi ro rang
+        # thay vi TypeError: open(None) kho hieu.
+        need = [("train", args.train_set, args.data_path_train),
+                ("validation", args.validation_set, args.data_path_validation),
+                ("test", args.test_set, args.data_path_test)]
+        missing = [s for s, flag, p in need if flag and not p]
+        if missing:
+            raise ValueError(
+                "dataset 'medqa' can file JSONL local (doc bang open(), khong co fallback HF). "
+                f"Thieu --data_path_* cho split: {missing}. "
+                "Chay Cell 7 trong notebook de xuat /kaggle/working/medqa_test.jsonl tu HF "
+                "(dung cho pass --no_options), roi truyen --data_path_test /kaggle/working/medqa_test.jsonl."
+            )
     if args.train_set:
         if args.dataset_name == "medmcqa":
             if args.data_path_train and args.data_path_train.endswith('.csv'):
