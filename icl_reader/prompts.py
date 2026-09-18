@@ -44,7 +44,9 @@ def append_question(args, start_template, item, tokenizer, contexts=[]):
         elif "phi" in args.model_name.lower():
             text = "\nContext: "
         else:
-            "\n\n### Context:\n"
+            # FIX: dong nay tung thieu `text =` (chi la string roi) -> UnboundLocalError
+            # voi moi model khong phai llama-3/phi (zephyr, llama-2, mistral) khi co contexts.
+            text = "\n\n### Context:\n"
 
         for ctx in contexts[:args.n_contexts]:
             if len(tokenizer(ctx)['input_ids']) <= max_value:
