@@ -16,14 +16,16 @@ def main(args, logger):
     logger.info(f"Splits processed: {splits}")
 
     # Load the LLM
+    # NOTE (vLLM>=0.10): 'use_beam_search' was removed from SamplingParams upstream
+    # (beam search moved to LLM.beam_search + BeamSearchParams). MedGENIE default is
+    # False (sampling), so dropping the kwarg keeps behavior unchanged.
     sampling_params = SamplingParams(
         n=args.n, 
         best_of=args.best_of, 
         temperature=args.temperature, 
         frequency_penalty=args.frequency_penalty, 
         top_p=args.top_p, 
-        max_tokens=args.max_tokens, 
-        use_beam_search=args.use_beam_search
+        max_tokens=args.max_tokens
     )
 
     llm = LLM(
@@ -31,7 +33,8 @@ def main(args, logger):
         quantization='awq',
         dtype='half',
         gpu_memory_utilization=.95,
-        max_model_len=2048
+        max_model_len=2048,
+        tensor_parallel_size=args.tensor_parallel_size
     )
 
     datasets = get_dataset_splits(args)

@@ -27,6 +27,7 @@ class ScriptArguments:
     batch_size: Optional[int] = field(default=8, metadata={"help": "Number of prompts per batch to process during inference"})
     saving_steps: Optional[int] = field(default=2, metadata={"help": "interval for saving model outputs"})
     no_options: Optional[bool] = field(default=False, metadata={"help": "if set to True, question options will not be included in the prompt for context generation."})
+    tensor_parallel_size: Optional[int] = field(default=1, metadata={"help": "Number of GPUs for tensor parallelism (vLLM). Set to 2 to use both GPUs."})
 
 
     # Sampling Parameters

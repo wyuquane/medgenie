@@ -70,7 +70,7 @@ def concat_and_convert(args, logger, contexts_w_ops, contexts_no_ops, dataset, d
         if str(id_question) in contexts_no_ops:
             n_context_no_ops = contexts_no_ops[str(id_question)]["contexts"]
         
-        ctxs = n_context_w_ops + n_context_no_ops
+        ctxs = n_context_no_ops + n_context_w_ops 
 
         if len(ctxs) < args.n_context:
             logger.info(f"Question {id_question}: {args.n_context-len(ctxs)} context(s) are missing.")

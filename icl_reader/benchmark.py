@@ -41,6 +41,7 @@ class ScriptArguments:
     n_contexts: Optional[int] = field(default=5, metadata={"help": "Number of contexts given as input within the prompt."})
     test_set_path: Optional[str] =  field(default=None, metadata={"help": "input path for test data."})
     n_shots: Optional[int] = field(default=2, metadata={"help": "The number of shot used in the prompt."})
+    tensor_parallel_size: Optional[int] = field(default=1, metadata={"help": "Number of GPUs for tensor parallelism (vLLM). Set to 2 to use both GPUs."})
 
 
 def get_accuracy(true_labels, predictions):
@@ -99,12 +100,14 @@ if __name__ == "__main__":
             tokenizer.eos_token_id, tokenizer.convert_tokens_to_ids("<|eot_id|>")
         ]
 
+    # NOTE (vLLM>=0.10): 'use_beam_search' was removed from SamplingParams upstream
+    # (beam search moved to LLM.beam_search + BeamSearchParams). MedGENIE always used
+    # False here (greedy/sampling), so dropping the kwarg keeps behavior unchanged.
     sampling_params = SamplingParams(
         n=1, 
         temperature=0.0, 
         top_p=1.0, 
         max_tokens=50, 
-        use_beam_search=False,
         stop_token_ids = terminators if "llama-3" in args.model_name.lower() or "llama3" in args.model_name.lower() else None,
     )
     
@@ -114,6 +117,7 @@ if __name__ == "__main__":
         "dtype": "half" if "awq" in args.model_name.lower() else "auto",
         "quantization": "awq" if "awq" in args.model_name.lower() else None,
         "max_model_len": 2048 if "pmc-llama" in args.model_name.lower() else args.max_model_len,
+        "tensor_parallel_size": args.tensor_parallel_size,
     }
 
     if "phi" in args.model_name.lower():
