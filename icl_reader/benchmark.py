@@ -17,8 +17,8 @@ from prompts import get_template, append_question
 # Load variables from the .env file
 load_dotenv()
 
-# Access the hugging face key
-hf_key = os.getenv('HF_KEY')
+# Access the hugging face key (Kaggle Secrets: HF_KEY, fallback HF_TOKEN / .env)
+hf_key = os.getenv('HF_KEY') or os.getenv('HF_TOKEN')
 
 # Define and parse arguments.
 @dataclass
@@ -87,7 +87,13 @@ if __name__ == "__main__":
 
     logger = logging.getLogger(__name__)
     logger.addHandler(logging.StreamHandler())
-    login(token=hf_key)
+    # Non-interactive login: skip when no token (ok for public models).
+    # login(token=None) would drop into an interactive prompt and crash on notebooks
+    # (termios.error). Gated models (Llama/Zephyr) still need HF_KEY/HF_TOKEN secret.
+    if hf_key:
+        login(token=hf_key)
+    else:
+        logger.warning("HF_KEY/HF_TOKEN not set — continuing without login (ok for public models; gated models will fail).")
     parser = HfArgumentParser(ScriptArguments)
     args = parser.parse_args_into_dataclasses()[0]
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
