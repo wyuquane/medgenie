@@ -10,6 +10,13 @@ from src.utils import process_output, get_prompts, get_split_info, get_dataset_s
 import os
 
 
+def _model_tag(name):
+    # 'disi-unibo-nlp/pmc-llama-13b-awq' -> 'pmc-llama-13b-awq'.
+    # HF repo ID chua dau '/' khong dung truc tiep lam ten file/template duoc
+    # (FileNotFoundError) — chi LLM(model=...) moi giu full ID.
+    return name.split("/")[-1].replace(":", "-")
+
+
 def main(args, logger):
     
     splits = [split for split, flag in [("train", args.train_set), ("validation", args.validation_set), ("test", args.test_set)] if flag]
@@ -39,7 +46,8 @@ def main(args, logger):
 
     datasets = get_dataset_splits(args)
     batch_size = args.batch_size
-    filename_template = args.model_name + "-template-no-options.txt" if args.no_options else args.model_name + "-template.txt"
+    model_tag = _model_tag(args.model_name)
+    filename_template = model_tag + "-template-no-options.txt" if args.no_options else model_tag + "-template.txt"
 
     logger.info(f"Reading template...")
     with open(f"prompt/{filename_template}") as f:
@@ -59,7 +67,7 @@ def main(args, logger):
         data = dataset[start_idx:max_samples]
         logger.info(f"Start index: {start_idx}\nMax samples index: {max_samples}\nSamples considered: {max_samples-start_idx}")
 
-        if "medmcqa" in args.dataset_name or "mmlu" in args.dataset_name or "medqa" in args.dataset_name and args.model_name in ["pmc-llama-13b-awq","BioMedGPT-LM-7B-awq"]:
+        if "medmcqa" in args.dataset_name or "mmlu" in args.dataset_name or "medqa" in args.dataset_name and model_tag in ["pmc-llama-13b-awq","BioMedGPT-LM-7B-awq"]:
             
             ids = dataset['id'][start_idx:max_samples] if args.dataset_name == "medmcqa" or args.dataset_name == "mmlu" else list(range(start_idx, max_samples))
             prompts = get_prompts(args, template=prompt_template, data=data, no_options=args.no_options)
@@ -100,14 +108,14 @@ def main(args, logger):
                     # Read existing data from the file if it exists
                     logger.info(f"Saving generated contexts at step {step}...")
                     try:
-                        with open(f'{out_dir_final}/contexts_{args.model_name}_{args.out_name}.json', 'r') as f:
+                        with open(f'{out_dir_final}/contexts_{model_tag}_{args.out_name}.json', 'r') as f:
                             existing_data = json.load(f)
                     except FileNotFoundError:
                         existing_data = {}
 
                     existing_data.update(out_json)
                     out_json = {}
-                    with open(f'{out_dir_final}/contexts_{args.model_name}_{args.out_name}.json', 'w') as f:
+                    with open(f'{out_dir_final}/contexts_{model_tag}_{args.out_name}.json', 'w') as f:
                         json.dump(existing_data, f, indent=4)  
                     logger.info(f"Done!")
                     last_index_saved[split] += args.saving_steps * batch_size if step % args.saving_steps == 0 else batch_size
@@ -115,7 +123,7 @@ def main(args, logger):
                     
 
             logger.info(f"Saving failure questions...")
-            with open(f'{out_dir_final}/fails_{args.model_name}_{args.out_name}.json', 'w') as f:
+            with open(f'{out_dir_final}/fails_{model_tag}_{args.out_name}.json', 'w') as f:
                 json.dump(fails, f, indent=4)  
             logger.info(f"Done!")
             logger.info(f"{split.upper()} SET FULL PROCESSED!")
@@ -126,7 +134,7 @@ if __name__ == "__main__":
     out_path_log = f'{args.out_dir}/{args.out_name}'
     os.makedirs(out_path_log, exist_ok=True)
     print(out_path_log)
-    log_file_path= f"{out_path_log}/{args.model_name}_{args.dataset_name}.log"
+    log_file_path= f'{out_path_log}/{_model_tag(args.model_name)}_{args.dataset_name}.log'
 
     # set up logging to file
     logging.basicConfig(level=logging.DEBUG,
