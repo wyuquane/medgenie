@@ -6,7 +6,7 @@ import pandas as pd
 from tqdm import tqdm
 from vllm import LLM, SamplingParams
 from src.input_args import get_parser
-from src.utils import process_output, get_prompts, get_split_info, get_dataset_splits
+from src.utils import process_output, get_prompts, get_split_info, get_dataset_splits, filter_long_prompts
 import os
 
 
@@ -40,7 +40,11 @@ def main(args, logger):
         quantization='awq',
         dtype='half',
         gpu_memory_utilization=.95,
-        max_model_len=2048,
+        max_model_len=args.max_model_len,
+        # Cap prefill/step o 2048 (= run cu da chay on dinh) + chunked prefill:
+        # prompt dai (vd 2183 tok) van chay duoc ma RAM init khong doi.
+        max_num_batched_tokens=args.max_num_batched_tokens,
+        enable_chunked_prefill=True,
         tensor_parallel_size=args.tensor_parallel_size
     )
 
@@ -72,6 +76,11 @@ def main(args, logger):
             ids = dataset['id'][start_idx:max_samples] if args.dataset_name == "medmcqa" or args.dataset_name == "mmlu" else list(range(start_idx, max_samples))
             prompts = get_prompts(args, template=prompt_template, data=data, no_options=args.no_options)
             logger.info(f"First prompt example:\n{prompts[0]}")
+            # T4 safety: prompt few-shot dai co the vuot max_model_len -> vLLM crash
+            # ca run. Loc truoc: id qua dai ghi vao fails, khong crash.
+            prompts, ids = filter_long_prompts(
+                prompts, ids, llm.get_tokenizer(),
+                args.max_model_len - args.max_tokens, logger, fails)
             
             batches = [prompts[i:i + batch_size] for i in range(0, len(prompts), batch_size)]
             ids_batches = [ids[i:i + batch_size] for i in range(0, len(ids), batch_size)]

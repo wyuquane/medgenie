@@ -98,6 +98,25 @@ def process_output(args, output):
     
     return contexts, question
 
+def filter_long_prompts(prompts, ids, tokenizer, max_allowed, logger, fails):
+    # Prompt few-shot + cau hoi dai co the vuot max_model_len (vd 2183 > 2048):
+    # vLLM raise ValueError lam crash ca run sau nhieu gio. Loc truoc o day,
+    # id bi loai ghi vao fails de khong mat dau thay vi crash.
+    kept_prompts, kept_ids = [], []
+    for pid, p in zip(ids, prompts):
+        n = len(tokenizer.encode(p))
+        if n > max_allowed:
+            logger.warning(f"SKIP id={pid}: prompt {n} tokens > {max_allowed} "
+                           f"(max_model_len - max_tokens). Ghi vao fails.")
+            fails[pid] = f"PROMPT_TOO_LONG ({n} tokens > {max_allowed})"
+        else:
+            kept_prompts.append(p)
+            kept_ids.append(pid)
+    logger.info(f"Prompt-length filter: giu {len(kept_prompts)}/{len(prompts)} "
+                f"(loai {len(prompts) - len(kept_prompts)} prompt qua dai).")
+    return kept_prompts, kept_ids
+
+
 def get_dataset_splits(args):
     train_dataset, val_dataset, test_dataset = [], [], []
     if args.dataset_name == "medqa":
